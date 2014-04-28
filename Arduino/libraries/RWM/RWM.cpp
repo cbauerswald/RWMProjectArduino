@@ -1,77 +1,40 @@
+#include "Arduino.h"
+#include "SPI.h"
 #include "RWM.h"
 
+
+//This function will write a value to a register on the ADXL345.
+//Parameters:
+//  char registerAddress - The register to write a value to
+//  char value - The value to be written to the specified register.
+void writeRegister(char registerAddress, char value){
+  //Set Chip Select pin low to signal the beginning of an SPI packet.
+  digitalWrite(RWM_ADXL_CS, LOW);
+  //Transfer the register address over SPI.
+  SPI.transfer(registerAddress);
+  //Transfer the desired register value over SPI.
+  SPI.transfer(value);
+  //Set the Chip Select pin high to signal the end of an SPI packet.
+  digitalWrite(RWM_ADXL_CS, HIGH);
+}
+
 RWM::RWM() {
-  pinMode(RWM_DAC_CS, OUTPUT);
-  digitalWrite(RWM_DAC_CS, HIGH);
-  pinMode(RWM_ADC_CS, OUTPUT);
-  digitalWrite(RWM_ADC_CS, HIGH);
-  pinMode(RWM_EEPROM_CS, OUTPUT);
-  digitalWrite(RWM_EEPROM_CS, HIGH);
-  pinMode(RWM_LDAC, OUTPUT);
-  digitalWrite(RWM_LDAC, HIGH);
+  pinMode(RWM_EEPROM_CS, OUTPUT); //initialize chip select pin for EEPROM, should this be INPUT??
+  digitalWrite(RWM_EEPROM_CS, HIGH); // set EEPROM chip select pin to high
+  pinMode(RWM_ADXL1_CS, OUTPUT); //initialize accelerometer chip select pin
+  digitalWrite(RWM_ADXL1_CS, HIGH); // set accelerometer chip select pin to high
+  pinMode(RWM_ADXL2_CS, OUPUT);
+  digitalWrite(RWM_ADXL2_CS, HIGH);
   SPI.begin();
-  SPI.setClockDivider(SPI_CLOCK_DIV8);
-}
-
-void RWM::DACwriteChannel(byte ch, int value) {
-  if ((ch<2) && (value>=0) && (value<4096)) {
-    digitalWrite(RWM_DAC_CS, LOW);
-    SPI.transfer(((ch==0) ? 0x30:0xB0)|(highByte(value)&0x0F));
-    SPI.transfer(lowByte(value));
-    digitalWrite(RWM_DAC_CS, HIGH);
-    digitalWrite(RWM_LDAC, LOW);
-    digitalWrite(RWM_LDAC, HIGH);
-  }
-}
-
-void RWM::DACwriteChannels(int value0, int value1) {
-  if ((value0>=0) && (value0<4096) && (value1>=0) && (value1<4096)) {
-    digitalWrite(RWM_DAC_CS, LOW);
-    SPI.transfer(0x30|(highByte(value0)&0x0F));
-    SPI.transfer(lowByte(value0));
-    digitalWrite(RWM_DAC_CS, HIGH);
-    digitalWrite(RWM_DAC_CS, LOW);
-    SPI.transfer(0xB0|(highByte(value1)&0x0F));
-    SPI.transfer(lowByte(value1));
-    digitalWrite(RWM_DAC_CS, HIGH);
-    digitalWrite(RWM_LDAC, LOW);
-    digitalWrite(RWM_LDAC, HIGH);
-  }
-}
-
-int RWM::ADCreadChannel(byte ch) {
-  byte value;
-  word temp;
-  
-  if (ch<4) {
-    digitalWrite(RWM_ADC_CS, LOW);
-    SPI.transfer(0x0C|(ch>>1));
-    value = 0x1F&SPI.transfer((ch&0x01) ? 0x80:0x00);
-    temp = word(value, SPI.transfer(0x00));
-    digitalWrite(RWM_ADC_CS, HIGH);
-    return int(temp);
-  } else
-    return 0x8000;
-}
-
-int RWM::ADCreadChannelDiff(byte ch) {
-  byte value;
-  word temp;
-
-  if (ch<2) {
-    digitalWrite(RWM_ADC_CS, LOW);
-    SPI.transfer(0x08|ch);
-    value = SPI.transfer(0x00);
-    temp = word((value&0x1F)|((value&0x10) ? 0xE0:0x00), SPI.transfer(0x00));
-    digitalWrite(RWM_ADC_CS, HIGH);
-    return int(temp);
-  } else
-    return 0x8000;
+  SPI.setDataMode(SPI_MODE03) //see arduino spi page for more info, the EEPROM is in this data mode and the ADXL is set to be in this data mode in writeregister
+  SPI.setClockDivider(SPI_CLOCK_DIV8); //this was in Brad's code, so I did it the same way...
+  writeRegister(RWM_ADXL_DATA, 01000011); // write to the register of the ADXL to set the DATA_FORMAT, which includes some settings
+  //see the datasheet (search DATA_FORMAT) for what this value should be, the second 1 sets to 3-wire mode,the last two 1s set the range to +/-16g
 }
 
 byte RWM::EEPROMreadStatus(void) {
+  //figure out the status of values such as WIP (Write in Progress) or WREN (Write Enable), can be used to make sure EEPROM is ready to take information
   byte value;
-
   digitalWrite(RWM_EEPROM_CS, LOW);
   SPI.transfer(RWM_RDSR);
   value = SPI.transfer(0);
@@ -80,15 +43,54 @@ byte RWM::EEPROMreadStatus(void) {
 }
 
 void RWM::EEPROMwriteEnable(void) {
+  //enable the EEPROM to take information
   digitalWrite(RWM_EEPROM_CS, LOW);
-  SPI.transfer(RWM_WREN);
+  //digitalWrite(RWM_EEPROM_HOLD, HIGH) //supposedly this is held high by being wired to 5V, did we do this? if not, I'll go around and add it
+  SPI.transfer(RWM_EEPROM_WREN);
   digitalWrite(RWM_EEPROM_CS, HIGH);
+
 }
 
 void RWM::EEPROMchipErase(void) {
+  //erase the EEPROM, code taken directly from BRAD, may need to set HOLD pins
   digitalWrite(RWM_EEPROM_CS, LOW);
+  //digitalWrite(RWM_EEPROM_HOLD, HIGH) // see comments in above function about setting the hold pin
   SPI.transfer(RWM_CE);
+  //digitalWrite(RWM_EEPROM_HOLD, LOW)
   digitalWrite(RWM_EEPROM_CS, HIGH);
+}
+
+void RWM::EEPROMsleep(void) {
+
+}
+
+
+//This function will read all of the data from the accelerometer
+void RWM::RWMReadAccelerometer(unsigned long address){
+  //Since we're performing a read operation, the most significant bit of the register address should be set.
+  char address = 0x80 | registerAddress;
+  //If we're doing a multi-byte read, bit 6 needs to be set as well.
+  if(numBytes > 1)address = address | 0x40;
+  unsigned char values[6];
+  //Set the Chip select pin low to start an SPI packet.
+  digitalWrite(RWM_ADXL_CS, LOW);
+  //Transfer the starting register address that needs to be read.
+  //Continue to read registers until we've read the number specified, storing the results to the input buffer.
+  SPI.transfer(DATAX0);
+  values[0] = SPI.transfer(0);
+  SPI.transfer(DATAX1);
+  values[1] =SPI.transfer(0);
+  SPI.transfer(DATAY0);
+  values[2] = SPI.transfer(0);
+  SPI.transfer(DATAY1); 
+  values[3] = SPI.transfer(0);
+  SPI.transfer(DATAZ0);
+  values[4] = SPI.transfer(0);
+  SPI.transfer(DATAZ1);
+  values[5] = SPI.transfer(0);
+  //Set the Chips Select pin high to end the SPI packet.
+  digitalWrite(RWM_ADXL_CS, HIGH);
+  return values;
 }
 
 void RWM::EEPROMwriteByte(unsigned long address, byte value) {
@@ -98,13 +100,16 @@ void RWM::EEPROMwriteByte(unsigned long address, byte value) {
     while (EEPROMreadStatus()&0x01) {}
     EEPROMwriteEnable();
     digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_WRITE);
+    SPI.transfer(RWM_EEPROM_WRITE);
     SPI.transfer(byte(address>>16));
     temp = word(address&0xFFFF);
     SPI.transfer(highByte(temp));
     SPI.transfer(lowByte(temp));
     SPI.transfer(value);
     digitalWrite(RWM_EEPROM_CS, HIGH);
+  }
+  else {
+    return 0xFF;
   }
 }
 
@@ -116,7 +121,7 @@ void RWM::EEPROMwriteBytes(unsigned long address, byte n, byte *buffer) {
     while (EEPROMreadStatus()&0x01) {}
     EEPROMwriteEnable();
     digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_WRITE);
+    SPI.transfer(RWM_EEPROM_WRITE);
     SPI.transfer(byte(address>>16));
     temp = word(address&0xFFFF);
     SPI.transfer(highByte(temp));
@@ -133,7 +138,7 @@ byte RWM::EEPROMreadByte(unsigned long address) {
   
   if (address<=0x1FFFF) {
     digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_READ);
+    SPI.transfer(RWM_EEPROM_READ);
     SPI.transfer(byte(address>>16));
     temp = word(address&0xFFFF);
     SPI.transfer(highByte(temp));
@@ -153,7 +158,7 @@ void RWM::EEPROMwriteInt(unsigned long address, int value) {
     while (EEPROMreadStatus()&0x01) {}
     EEPROMwriteEnable();
     digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_WRITE);
+    SPI.transfer(RWM_EEPROM_WRITE);
     SPI.transfer(byte(address>>16));
     temp = word(address&0xFFFF);
     SPI.transfer(highByte(temp));
@@ -173,7 +178,7 @@ void RWM::EEPROMwriteInts(unsigned long address, byte n, int *buffer) {
     while (EEPROMreadStatus()&0x01) {}
     EEPROMwriteEnable();
     digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_WRITE);
+    SPI.transfer(RWM_EEPROM_WRITE);
     SPI.transfer(byte(address>>16));
     temp = word(address&0xFFFF);
     SPI.transfer(highByte(temp));
@@ -193,7 +198,7 @@ int RWM::EEPROMreadInt(unsigned long address) {
   address = address<<1;
   if (address<0x1FFFC) {
     digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_READ);
+    SPI.transfer(RWM_EEPROM_READ);
     SPI.transfer(byte(address>>16));
     temp = word(address&0xFFFF);
     SPI.transfer(highByte(temp));
@@ -203,97 +208,5 @@ int RWM::EEPROMreadInt(unsigned long address) {
     digitalWrite(RWM_EEPROM_CS, HIGH);
     return int(temp);
   } else
-    return 0xFFFF;
-}
-
-void RWM::EEPROMwrite2Ints(unsigned long address, int *buffer) {
-  word temp;
-  byte i;
-  
-  address = address<<2;
-  if (address<0x1FFFC) {
-    while (EEPROMreadStatus()&0x01) {}
-    EEPROMwriteEnable();
-    digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_WRITE);
-    SPI.transfer(byte(address>>16));
-    temp = word(address&0xFFFF);
-    SPI.transfer(highByte(temp));
-    SPI.transfer(lowByte(temp));
-    for (i = 0; i<2; i++) {
-      SPI.transfer(lowByte(buffer[i]));
-      SPI.transfer(highByte(buffer[i]));
-    }
-    digitalWrite(RWM_EEPROM_CS, HIGH);
-  }
-}
-
-void RWM::EEPROMread2Ints(unsigned long address, int *buffer) {
-  word temp;
-  byte i, value;
-  
-  address = address<<2;
-  if (address<0x1FFFC) {
-    digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_READ);
-    SPI.transfer(byte(address>>16));
-    temp = word(address&0xFFFF);
-    SPI.transfer(highByte(temp));
-    SPI.transfer(lowByte(temp));
-    for (i = 0; i<2; i++) {
-      value = SPI.transfer(0);
-      temp = word(SPI.transfer(0), value);
-      buffer[i] = int(temp);
-    }
-    digitalWrite(RWM_EEPROM_CS, HIGH);
-  } else {
-    for (i = 0; i<2; i++)
-      buffer[i] = 0xFFFF;
-  }
-}
-
-void RWM::EEPROMwrite4Ints(unsigned long address, int *buffer) {
-  word temp;
-  byte i;
-  
-  address = address<<3;
-  if (address<0x1FFF8) {
-    while (EEPROMreadStatus()&0x01) {}
-    EEPROMwriteEnable();
-    digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_WRITE);
-    SPI.transfer(byte(address>>16));
-    temp = word(address&0xFFFF);
-    SPI.transfer(highByte(temp));
-    SPI.transfer(lowByte(temp));
-    for (i = 0; i<4; i++) {
-      SPI.transfer(lowByte(buffer[i]));
-      SPI.transfer(highByte(buffer[i]));
-    }
-    digitalWrite(RWM_EEPROM_CS, HIGH);
-  }
-}
-
-void RWM::EEPROMread4Ints(unsigned long address, int *buffer) {
-  word temp;
-  byte i, value;
-  
-  address = address<<3;
-  if (address<0x1FFF8) {
-    digitalWrite(RWM_EEPROM_CS, LOW);
-    SPI.transfer(RWM_READ);
-    SPI.transfer(byte(address>>16));
-    temp = word(address&0xFFFF);
-    SPI.transfer(highByte(temp));
-    SPI.transfer(lowByte(temp));
-    for (i = 0; i<4; i++) {
-      value = SPI.transfer(0);
-      temp = word(SPI.transfer(0), value);
-      buffer[i] = int(temp);
-    }
-    digitalWrite(RWM_EEPROM_CS, HIGH);
-  } else {
-    for (i = 0; i<4; i++)
-      buffer[i] = 0xFFFF;
-  }
+    return 0;
 }
