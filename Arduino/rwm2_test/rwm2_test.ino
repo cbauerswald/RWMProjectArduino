@@ -18,12 +18,12 @@ unsigned long address = 64;
 
 void setup() {
   // put your setup code here, to run once:
+  pinMode(4, OUTPUT);
+  pinMode(6, OUTPUT);
   pinMode(2, OUTPUT); 
-  digitalWrite(2, LOW);
+  digitalWrite(2, HIGH);
   pinMode(5, OUTPUT);
   digitalWrite(5, HIGH);
-  //pinMode(7, OUTPUT);
-  //digitalWrite(7, HIGH);
   
   //digitalWrite(2, LOW);
   //SPI.transfer(RWM_CE);
@@ -34,13 +34,19 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  /*digitalWrite(2,LOW);
+  int written = rwm.EEPROMreadInt(address);
+  digitalWrite(2,HIGH);
+  delay(10);*/
   digitalWrite(2, LOW);
   byte val = rwm.EEPROMreadByte(address); 
   digitalWrite(2,HIGH);
-  //delay(10);
-  //digitalWrite(2,LOW);
-  //int written = rwm.EEPROMreadInt(address);
-  //digitalWrite(2,HIGH);
+  /*if (val>0) {
+    digitalWrite(4, HIGH);
+  }
+  else {
+   digitalWrite(4, LOW);
+  }*/
   Serial.println(val);
   //digitalWrite(led_red, LOW);
   delay(100);               // wait for a second
