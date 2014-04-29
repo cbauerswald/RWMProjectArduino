@@ -5,8 +5,7 @@
 #include "SPI.h"
 
 #define RWM_EEPROM_CS     2         // Chip select pin for EEPROM
-#define RWM_ADXL1_CS      5         // Chip select pin for accelerometer, ADXL345, also pin 9 
-#define RWM_ADXL2_CS      7
+#define RWM_ADXL1_CS      5         // Chip select pin for accelerometer, ADXL345
 
 #define RWM_ADXL_DATAFORMAT    0x31        // set the data format thing
 #define RWM_ADXL_DATAX0        0x32       // X-Axis Data 0
@@ -27,10 +26,6 @@
 class RWM {
   public:
     RWM();
-    void DACwriteChannel(byte ch, int value);
-    void DACwriteChannels(int value0, int value1);
-    int ADCreadChannel(byte ch);
-    int ADCreadChannelDiff(byte ch);
     byte EEPROMreadStatus(void);
     void EEPROMwriteEnable(void);
     void EEPROMchipErase(void);
@@ -40,10 +35,8 @@ class RWM {
     void EEPROMwriteInt(unsigned long address, int value);
     void EEPROMwriteInts(unsigned long address, byte num, int *buffer);
     int EEPROMreadInt(unsigned long address);
-    void EEPROMwrite2Ints(unsigned long address, int *buffer);
-    void EEPROMread2Ints(unsigned long address, int *buffer);
-    void EEPROMwrite4Ints(unsigned long address, int *buffer);
-    void EEPROMread4Ints(unsigned long address, int *buffer);
+    void RWMreadAccelerometer(unsigned long address, );
+    void RWMwriteRegister(char registerAddress, char value);
   private:
 };
 

@@ -7,7 +7,7 @@
 //Parameters:
 //  char registerAddress - The register to write a value to
 //  char value - The value to be written to the specified register.
-void writeRegister(char registerAddress, char value){
+void RWMwriteRegister(char registerAddress, char value){
   //Set Chip Select pin low to signal the beginning of an SPI packet.
   digitalWrite(RWM_ADXL_CS, LOW);
   //Transfer the register address over SPI.
@@ -28,7 +28,7 @@ RWM::RWM() {
   SPI.begin();
   SPI.setDataMode(SPI_MODE03) //see arduino spi page for more info, the EEPROM is in this data mode and the ADXL is set to be in this data mode in writeregister
   SPI.setClockDivider(SPI_CLOCK_DIV8); //this was in Brad's code, so I did it the same way...
-  writeRegister(RWM_ADXL_DATA, 01000011); // write to the register of the ADXL to set the DATA_FORMAT, which includes some settings
+  RWMwriteRegister(RWM_ADXL_DATA, 01000011); // write to the register of the ADXL to set the DATA_FORMAT, which includes some settings
   //see the datasheet (search DATA_FORMAT) for what this value should be, the second 1 sets to 3-wire mode,the last two 1s set the range to +/-16g
 }
 
@@ -66,12 +66,12 @@ void RWM::EEPROMsleep(void) {
 
 
 //This function will read all of the data from the accelerometer
-void RWM::RWMReadAccelerometer(unsigned long address){
+void RWM::RWMReadAccelerometer(unsigned long address, values*){
   //Since we're performing a read operation, the most significant bit of the register address should be set.
-  char address = 0x80 | registerAddress;
+  //char address = 0x80 | registerAddress;
   //If we're doing a multi-byte read, bit 6 needs to be set as well.
-  if(numBytes > 1)address = address | 0x40;
-  unsigned char values[6];
+  //if(numBytes > 1)address = address | 0x40;
+  //unsigned char values[6];
   //Set the Chip select pin low to start an SPI packet.
   digitalWrite(RWM_ADXL_CS, LOW);
   //Transfer the starting register address that needs to be read.
@@ -90,7 +90,6 @@ void RWM::RWMReadAccelerometer(unsigned long address){
   values[5] = SPI.transfer(0);
   //Set the Chips Select pin high to end the SPI packet.
   digitalWrite(RWM_ADXL_CS, HIGH);
-  return values;
 }
 
 void RWM::EEPROMwriteByte(unsigned long address, byte value) {

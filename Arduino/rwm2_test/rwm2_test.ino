@@ -16,12 +16,13 @@ unsigned long interval = 1;
 unsigned long samples = 1000;
 unsigned long address = 64;
 
+
 void setup() {
   // put your setup code here, to run once:
   pinMode(4, OUTPUT);
   pinMode(6, OUTPUT);
   // eeprom cs is 2
-  //adxl cs is 5
+  // adxl cs is 5
   pinMode(2, OUTPUT); 
   digitalWrite(2, HIGH);
   pinMode(5, OUTPUT);
@@ -40,19 +41,22 @@ void loop() {
   int written = rwm.EEPROMreadInt(address);
   digitalWrite(2,HIGH);
   delay(10);*/
+  
   digitalWrite(5, LOW);
-  byte val = rwm. 
+  int val = rwm.RWMreadAccelerometer();
   digitalWrite(5, HIGH);
   digitalWrite(2, LOW);
-  byte val = rwm.EEPROMreadByte(address); 
+  int val = rwm.EEPROMreadByte(address);
   digitalWrite(2,HIGH);
+  
+  
   /*if (val>0) {
     digitalWrite(4, HIGH);
   }
   else {
    digitalWrite(4, LOW);
   }*/
-  Serial.println(val);
+  //Serial.println(val);
   //digitalWrite(led_red, LOW);
   delay(100);               // wait for a second
   //digitalWrite(led_red, HIGH);   // turn the LED on (HIGH is the voltage level)
