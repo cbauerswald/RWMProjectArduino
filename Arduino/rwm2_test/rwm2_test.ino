@@ -19,29 +19,29 @@ unsigned long address = 64;
 void setup() {
   // put your setup code here, to run once:
   pinMode(2, OUTPUT); 
-  digitalWrite(2, HIGH);
+  digitalWrite(2, LOW);
   pinMode(5, OUTPUT);
   digitalWrite(5, HIGH);
-  pinMode(7, OUTPUT);
-  digitalWrite(5, HIGH);
+  //pinMode(7, OUTPUT);
+  //digitalWrite(7, HIGH);
   
-  digitalWrite(2, LOW);
-  SPI.transfer(RWM_CE);
-  digitalWrite(2, HIGH);
+  //digitalWrite(2, LOW);
+  //SPI.transfer(RWM_CE);
+  //digitalWrite(2, HIGH);
+  
   Serial.begin(115200);
-  int towrite = 100;
 };
 
 void loop() {
   // put your main code here, to run repeatedly:
-  //digitalWrite(2, LOW);
-  //rwm.EEPROMwriteByte(address,5); 
-  //digitalWrite(2,HIGH);
-  //delay(10);
-  digitalWrite(2,LOW);
-  byte written = rwm.EEPROMreadByte(address);
+  digitalWrite(2, LOW);
+  byte val = rwm.EEPROMreadByte(address); 
   digitalWrite(2,HIGH);
-  Serial.println(written);
+  //delay(10);
+  //digitalWrite(2,LOW);
+  //int written = rwm.EEPROMreadInt(address);
+  //digitalWrite(2,HIGH);
+  Serial.println(val);
   //digitalWrite(led_red, LOW);
   delay(100);               // wait for a second
   //digitalWrite(led_red, HIGH);   // turn the LED on (HIGH is the voltage level)
