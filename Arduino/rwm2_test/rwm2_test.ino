@@ -20,6 +20,8 @@ void setup() {
   // put your setup code here, to run once:
   pinMode(4, OUTPUT);
   pinMode(6, OUTPUT);
+  // eeprom cs is 2
+  //adxl cs is 5
   pinMode(2, OUTPUT); 
   digitalWrite(2, HIGH);
   pinMode(5, OUTPUT);
@@ -38,6 +40,9 @@ void loop() {
   int written = rwm.EEPROMreadInt(address);
   digitalWrite(2,HIGH);
   delay(10);*/
+  digitalWrite(5, LOW);
+  byte val = rwm. 
+  digitalWrite(5, HIGH);
   digitalWrite(2, LOW);
   byte val = rwm.EEPROMreadByte(address); 
   digitalWrite(2,HIGH);
