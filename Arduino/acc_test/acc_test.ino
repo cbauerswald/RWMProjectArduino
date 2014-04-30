@@ -34,7 +34,7 @@ void setup(){
   digitalWrite(CS, HIGH);
   
   //Put the ADXL345 into +/- 4G range by writing the value 0x01 to the DATA_FORMAT register.
-  writeRegister(DATA_FORMAT, 0x01);
+  writeRegister(DATA_FORMAT, B00000011);
   //Put the ADXL345 into Measurement Mode by writing 0x08 to the POWER_CTL register.
   writeRegister(POWER_CTL, 0x08);  //Measurement mode  
 }

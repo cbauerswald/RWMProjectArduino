@@ -57,6 +57,7 @@ boolean logdelay = false;
 boolean logdata = false;
 boolean logdatalow = false;
 boolean dumpdata = false;
+boolean highfreq = true;  
 unsigned long t0 = 0;
 unsigned long t = 0;
 unsigned long delaytime = 3*1000; //3 seconds
@@ -65,11 +66,11 @@ unsigned long tElapsedLS;
 int led_red =4;
 int led_green=6;
 int buttonState = 0; // variable for reading the pushbutton status
-int dataLogFreq = 400;
-byte accVals[6];
+unsigned int freqdelay = 2500;
 byte dataBuffer[64];
 byte tElapsedByte;
 boolean debug = false;
+unsigned char accVals[10];
 
 
 //INITIALIZATION STUFF FOR ADXL
@@ -124,13 +125,13 @@ void setup()
   delay(500);
   
   //Put the ADXL345 into +/- 4G range by writing the value 0x01 to the DATA_FORMAT register.
-  writeRegister(DATA_FORMAT, 0x01);
+  writeRegister(DATA_FORMAT, B00000011);
   //Put the ADXL345 into Measurement Mode by writing 0x08 to the POWER_CTL register.
   writeRegister(POWER_CTL, 0x08);  //Measurement mode  
   
   // Enable writing
-  EEPROMwriteEnablee();
-  EEPROMchipErasee();
+  //EEPROMwriteEnablee();
+  //EEPROMchipErasee();
 }
 
 void loop()
@@ -211,13 +212,21 @@ void loop()
     //read from accelerometer
     //write to EEPROM
     //delay(1000); //just for testing
-    delayMicroseconds((1/dataLogFreq)*10^6); //delay for 1/400 s, f = 400
+    if (highfreq) {
+      delayMicroseconds(2500); //delay for 1/400 s, f = 400
+    }
+    else {
+      delay(20);
+    }
     if (debug )Serial.print("Checking elapsed time, t-t0 = ");
     if (debug) Serial.print(t-t0);
     if (debug)  Serial.println(" ms");
-    if((t-t0)>20000) { //if 20 seconds have passed
-      dataLogFreq = 50;
-      if (debug)  Serial.println("done with 400 freq");
+    if((t-t0)>20000 && highfreq==true) { //if 20 seconds have passed
+      highfreq = false;
+      Serial.println("done with 400 freq");
+      Serial.print("Currently, ");
+      Serial.print(EEPROM_address);
+      Serial.println(" Bytes have been written to memory.");
       digitalWrite(led_red, HIGH);
       //we need to make sure that this if statement is only called once in the future
     }
@@ -250,12 +259,7 @@ void loop()
 
 int logData(unsigned long currentTime, unsigned long startTime, byte *buffer, int index) {
   //Serial.println("logging data");
-  accVals[0] = B00011111;
-  accVals[1] = B11111111;
-  accVals[2] = B00011111;
-  accVals[3] = B11111111;
-  accVals[4] = B00011111;
-  accVals[5] = B11111111; //function to read from accelerometer
+  readRegister(DATAX0, 6, accVals);//function to read from accelerometer
   tElapsed=t-t0;
   tElapsedLS= tElapsed%100;
   tElapsedByte = byte(tElapsedLS);
