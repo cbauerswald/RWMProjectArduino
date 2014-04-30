@@ -13,12 +13,14 @@ int led_green = 6;
 // the setup routine runs once when you press reset:
 void setup() {                
   // initialize the digital pin as an output.
+  Serial.begin(9600);
   pinMode(led_red, OUTPUT);   
   pinMode(led_green, OUTPUT);  
 }
 
 // the loop routine runs over and over again forever:
 void loop() {
+  Serial.println("Hello");
   digitalWrite(led_green, LOW);
   digitalWrite(led_red, HIGH);   // turn the LED on (HIGH is the voltage level)
   delay(1000);               // wait for a second
